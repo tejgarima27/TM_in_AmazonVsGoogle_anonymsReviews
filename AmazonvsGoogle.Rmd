@@ -1,0 +1,175 @@
+---
+title: "AmazonVsGoogle"
+author: "Garima Gupta"
+date: "20/09/2020"
+output: html_document
+---
+
+### PROBLEM STATEMENT:
+* Does Amazon or Google have better-perceived pay according to online reviews?
+* Does Amazon or Google have a better work-life balance according to current employees?
+
+```{r}
+amzn <- read.csv("Amazon.csv")
+goog <- read.csv("Google.csv")
+
+```
+
+### Identifying the text sources for both dataset:
+```{r}
+# Print the structure of amzn
+str(amzn)
+
+# Create amzn_pros
+amzn_pros <- amzn$pros
+
+# Create amzn_cons
+amzn_cons <- amzn$cons
+
+# Print the structure of goog
+str(goog)
+
+# Create goog_pros
+goog_pros <- goog$pros
+
+# Create goog_cons
+goog_cons <- goog$cons
+
+```
+
+### ORGANIZING THE TEXT DATA:
+Working with Amazon Reviews:
+```{r}
+# Source and create the corpus
+library(tm)
+library(NLP)
+amzn_p_corp <- VCorpus(VectorSource(amzn$pros))
+amzn_c_corp <- VCorpus(VectorSource(amzn$cons))
+
+```
+
+```{r}
+# tm cleaning function
+tm_clean <- function(corpus){
+  tm_clean <- tm_map(corpus,removePunctuation)
+  corpus <- tm_map(corpus,stripWhitespace)
+  corpus <- tm_map(corpus, removeWords,c(stopwords("en"),"Google","Amazon","company"))
+  return(corpus)
+}
+
+
+# tm_clean for Amazon positive reviews corpus
+amzn_pros_corp <- tm_clean(amzn_p_corp)
+
+# tm_clean for Amazon negative reviews corpus
+amzn_cons_corp <- tm_clean(amzn_c_corp)
+```
+
+Working with Google Reviews:
+```{r}
+# Source and create the corpus
+
+goog_p_corp <- VCorpus(VectorSource(goog$pros))
+goog_c_corp <- VCorpus(VectorSource(goog$cons))
+
+```
+
+```{r}
+# tm_clean for Google positive reviews corpus
+goog_pros_corp <- tm_clean(goog_p_corp)
+
+# tm_clean for Google negative reviews corpus
+goog_cons_corp <- tm_clean(goog_c_corp)
+
+```
+
+### Feature extraction & analysis: amzn_cons
+```{r}
+library(tm)
+library(RWeka)
+
+tokenizer <- function(x) {
+  NGramTokenizer(x, Weka_control(min = 2, max = 2))}
+
+# Create amzn_p_tdm
+amzn_p_tdm <- TermDocumentMatrix(
+  amzn_pros_corp,
+  control = list(tokenize = tokenizer)
+)
+
+# Create amzn_c_tdm_m
+amzn_p_tdm_m <- as.matrix(amzn_p_tdm)
+
+# Create amzn_c_freq
+amzn_p_freq <-rowSums(amzn_p_tdm_m)
+
+# Plot a word cloud of negative Amazon bigrams
+wordcloud(names(amzn_p_freq),amzn_p_freq,max.words = 25,color = "blue")
+
+
+# Create amzn_c_tdm
+amzn_c_tdm <- TermDocumentMatrix(
+  amzn_cons_corp,
+  control = list(tokenize = tokenizer)
+)
+
+# Create amzn_c_tdm_m
+amzn_c_tdm_m <- as.matrix(amzn_c_tdm)
+
+# Create amzn_c_freq
+amzn_c_freq <-rowSums(amzn_c_tdm_m)
+
+# Plot a word cloud of negative Amazon bigrams
+wordcloud(names(amzn_c_freq),amzn_c_freq,max.words = 25,color = "red")
+
+```
+
+
+AMAZON NEGATIVE REVIEWS DENDOGRAM:
+```{r}
+# Create amzn_c_tdm
+amzn_c_tdm <- TermDocumentMatrix(
+  amzn_cons_corp,
+  control = list(tokenize = tokenizer)
+)
+
+# Print amzn_c_tdm to the console
+print(amzn_c_tdm)
+
+# Create amzn_c_tdm2 by removing sparse terms 
+amzn_c_tdm2 <- removeSparseTerms(amzn_c_tdm,0.993)
+
+# Create hc as a cluster of distance values
+hc <- hclust(dist(amzn_c_tdm2),
+           method = "complete")
+
+# Produce a plot of hc
+plot(hc)
+
+```
+
+
+CHECKING FOR WORD ASSOCIATION:
+```{r}
+# Create amzn_p_tdm
+amzn_p_tdm <- TermDocumentMatrix(
+  amzn_pros_corp,
+  control = list(tokenize = tokenizer)
+)
+
+# Create amzn_p_m
+amzn_p_m <- as.matrix(amzn_p_tdm)
+
+# Create amzn_p_freq
+amzn_p_freq <- rowSums(amzn_p_m)
+
+# Create term_frequency
+term_frequency <- sort(amzn_p_freq, decreasing = TRUE)
+
+# View the top 5 most frequent bigramsterm_frequency[1:5]
+term_frequency[1:5]      
+
+# Find associations with fast-paced
+findAssocs(amzn_p_tdm,"fast paced",0.2)
+
+```
